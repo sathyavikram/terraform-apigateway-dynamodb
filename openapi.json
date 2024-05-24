@@ -1,0 +1,69 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "title": "Books app apis",
+        "description": "API's to manage books",
+        "version": "1.0"
+    },
+    "paths": {
+        "/ping": {
+            "get": {
+                "operationId": "Test Book Ping API",
+                "responses": {
+                    "200": {
+                        "description": "200 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PingResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-amazon-apigateway-integration": {
+                    "type": "mock",
+                    "responses": {
+                        "default": {
+                            "statusCode": "200",
+                            "responseTemplates": {
+                                "application/json": "{\n  \"message\" :  \"Hello, world! I am available and ready to respond to your book request.\" \n}"
+                            }
+                        }
+                    },
+                    "requestTemplates": {
+                        "application/json": "{\"statusCode\": 200}"
+                    },
+                    "passthroughBehavior": "when_no_match"
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "PingResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "x-amazon-apigateway-cors": {
+        "allowOrigins": [
+            "*"
+        ],
+        "allowMethods": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS"
+        ],
+        "allowHeaders": [
+            "content-type"
+        ]
+    }
+}
