@@ -1,0 +1,314 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "title": "Books app apis",
+        "description": "API's to manage books",
+        "version": "1.0"
+    },
+    "paths": {
+        "/ping": {
+            "get": {
+                "operationId": "Test Book Ping API",
+                "responses": {
+                    "200": {
+                        "description": "200 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PingResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-amazon-apigateway-integration": {
+                    "type": "mock",
+                    "responses": {
+                        "default": {
+                            "statusCode": "200",
+                            "responseTemplates": {
+                                "application/json": "{\n  \"message\" :  \"Hello, world! I am available and ready to respond to your book request.\" \n}"
+                            }
+                        }
+                    },
+                    "requestTemplates": {
+                        "application/json": "{\"statusCode\": 200}"
+                    },
+                    "passthroughBehavior": "when_no_match"
+                }
+            }
+        },
+        "/book/{userId}": {
+            "post": {
+                "operationId": "Add book to user account",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookInfo"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "200 response",
+                        "headers": {
+                            "Access-Control-Allow-Origin": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Empty"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "400 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "500 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-amazon-apigateway-integration": {
+                    "type": "aws",
+                    "credentials": "${ModifyDataRoleArn}",
+                    "httpMethod": "POST",
+                    "uri": "arn:aws:apigateway:${CurrentRegion}:dynamodb:action/PutItem",
+                    "responses": {
+                        "200": {
+                            "statusCode": 200,
+                            "responseParameters": {
+                                "method.response.header.Cache-Control": "'no-cache, no-store'",
+                                "method.response.header.Access-Control-Allow-Origin": "'*'"
+                            }
+                        },
+                        "4\\d{2}": {
+                            "statusCode": 400,
+                            "message": "Bad request"
+                        },
+                        "5\\d{2}": {
+                            "statusCode": 500,
+                            "message": "Server error"
+                        }
+                    },
+                    "requestTemplates": {
+                        "application/json": "{\"TableName\":\"${BooksTableName}\",\"Item\":{\"userId\":{\"S\":\"$input.params('userId')\"},\"id\":{\"S\":\"$context.requestId\"},\"title\":{\"S\":\"$input.path('$.title')\"},\"author\":{\"S\":\"$input.path('$.author')\"},\"isbn\":{\"S\":\"$input.path('$.isbn')\"},\"addedOn\":{\"S\":\"$context.requestTimeEpoch\"}}}"
+                    },
+                    "passthroughBehavior": "when_no_templates"
+                }
+            },
+            "get": {
+                "operationId": "Get all user books",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "200 response",
+                        "headers": {
+                            "Access-Control-Allow-Origin": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BookList"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "400 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "500 response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-amazon-apigateway-integration": {
+                    "type": "aws",
+                    "credentials": "${ReadDataRoleArn}",
+                    "httpMethod": "POST",
+                    "uri": "arn:aws:apigateway:${CurrentRegion}:dynamodb:action/Query",
+                    "responses": {
+                        "200": {
+                            "statusCode": 200,
+                            "responseParameters": {
+                                "method.response.header.Cache-Control": "'no-cache, no-store'",
+                                "method.response.header.Access-Control-Allow-Origin": "'*'"
+                            },
+                            "responseTemplates": {
+                                "application/json": "#set($inputRoot = $input.path('$'))[#foreach($field in $inputRoot.Items) {\"id\": \"$field.id.S\",\"title\": \"$field.title.S\",\"author\": \"$field.author.S\",\"isbn\": \"$field.isbn.S\",\"addedOn\": \"$field.addedOn.S\"}#if($foreach.hasNext),#end#end]"
+                            }
+                        },
+                        "4\\d{2}": {
+                            "statusCode": 400,
+                            "message": "Bad request"
+                        },
+                        "5\\d{2}": {
+                            "statusCode": 500,
+                            "message": "Server error"
+                        }
+                    },
+                    "requestTemplates": {
+                        "application/json": "{\"TableName\":\"${BooksTableName}\", \"KeyConditionExpression\":\"userId=:userId\", \"ExpressionAttributeValues\":{\":userId\":{\"S\":\"$input.params('userId')\"}}, \"ProjectionExpression\": \"id, title, author, isbn, addedOn\" }"
+                    },
+                    "passthroughBehavior": "when_no_templates"
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "PingResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Empty": {
+                "type": "object"
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "statusCode": {
+                        "type": "integer",
+                        "example": 400
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Bad Request"
+                    }
+                }
+            },
+            "BookInfo": {
+                "type": "object",
+                "required": [
+                    "title"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "author": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 25
+                    },
+                    "isbn": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 10
+                    },
+                    "addedOn": {
+                        "type": "string"
+                    }
+                }
+            },
+            "BookList": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/components/schemas/BookInfo"
+                }
+            }
+        }
+    },
+    "x-amazon-apigateway-cors": {
+        "allowOrigins": [
+            "*"
+        ],
+        "allowMethods": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS"
+        ],
+        "allowHeaders": [
+            "content-type"
+        ]
+    },
+    "x-amazon-apigateway-request-validators": {
+        "basic": {
+            "validateRequestBody": true,
+            "validateRequestParameters": true
+        },
+        "params-only": {
+            "validateRequestBody": false,
+            "validateRequestParameters": true
+        }
+    },
+    "x-amazon-apigateway-request-validator": "basic"
+}
