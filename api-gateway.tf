@@ -1,6 +1,62 @@
 # Create openapi template for rest api
 data "template_file" "openapi_template" {
-  template = templatefile("${path.module}/openapi.json", {})
+  template = templatefile("${path.module}/openapi.json", {
+    BooksTableName = "${aws_dynamodb_table.books-dynamodb-table.id}",
+    CurrentRegion         = "${data.aws_region.current.name}"
+    ModifyDataRoleArn     = "${aws_iam_role.apigateway_modify_data_in_db.arn}"
+    ReadDataRoleArn    = "${aws_iam_role.apigateway_db_read_data_role.arn}"
+  })
+}
+
+data "aws_region" "current" {}
+
+data "aws_iam_policy_document" "apigateway_assume_role_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["apigateway.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "apigateway_modify_data_in_db" {
+  name               = "apigateway_modify_data_in_db"
+  assume_role_policy = data.aws_iam_policy_document.apigateway_assume_role_policy.json
+
+  inline_policy {
+    name = "apigateway_modify_data_in_db_inline_policy"
+    policy = jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Action   = ["dynamodb:PutItem", "dynamodb:DeleteItem", "dynamodb:UpdateItem"]
+          Effect   = "Allow"
+          Resource = ["${aws_dynamodb_table.books-dynamodb-table.arn}"]
+        },
+      ]
+    })
+  }
+}
+
+resource "aws_iam_role" "apigateway_db_read_data_role" {
+  name               = "apigateway_db_read_data_role"
+  assume_role_policy = data.aws_iam_policy_document.apigateway_assume_role_policy.json
+
+  inline_policy {
+    name = "apigateway_db_read_data_inline_policy"
+    policy = jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Action   = ["dynamodb:Query", "dynamodb:GetItem"]
+          Effect   = "Allow"
+          Resource = ["${aws_dynamodb_table.books-dynamodb-table.arn}"]
+        },
+      ]
+    })
+  }
 }
 
 #Create a new API Gateway rest api with DynamoDB Integration
